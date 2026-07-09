@@ -1,13 +1,23 @@
-# mouse-forward-backward-volume-control-ahk
+# mouse-side-buttons-volume-control
 
-A lightweight and efficient AutoHotkey v2 script that remaps your mouse's side buttons (`XButton1` and `XButton2`) to control the system volume with clean step boundaries and smart auto-repeat handling.
+![OS: Windows](https://img.shields.io/badge/os-Windows-blue?style=flat-square&logo=windows)
+![Language: AutoHotkey v2](https://img.shields.io/badge/language-AutoHotkey_v2-green?style=flat-square)
+
+A lightweight and efficient utility built **exclusively for Windows OS** that remaps your mouse's side buttons (`XButton1` and `XButton2`) to control the system volume with clean step boundaries and smart auto-repeat handling.
 
 Unlike naive remapping scripts, this project addresses Windows' native asynchronous audio latency by introducing an atomic thread gate. This prevents odd, fragmented volume steps (like 4% or 14%) and guarantees your volume snaps perfectly to rounded milestones. 
 
 Furthermore, by utilizing the native Windows **UIAccess** framework, the script reliably bypasses UAC boundaries, allowing you to control the volume even when elevated administrative windows (like **Task Manager** or **Admin Terminal**) are in focus, without needing to run the script itself as a full Administrator.
 
+---
+
+## 🖥️ System Compatibility
+- **OS:** Windows 10 / Windows 11 (64-bit or 32-bit). This utility relies on native Windows Core Audio APIs and the Windows UIAccess framework; it is **not** compatible with macOS or Linux.
+
+---
+
 ## Features
-- **Side Button Mapping:** Maps Backward (`XButton1`) to Volume Down and Forward (`XButton2`) to Volume Up.
+- **Side Button Mapping:** Maps Backward/Lower Side Button (`XButton1`) to Volume Down and Forward/Upper Side Button (`XButton2`) to Volume Up.
 - **Smart Auto-Repeat:** Pressing once adjusts the volume by a single step; holding the button down triggers continuous adjustment with a fluid 100ms delay.
 - **Clean Step Snapping:** Automatically aligns and locks the volume onto precise 10% step boundaries upon button release (0%, 10%, 20% ... 100%).
 - **Boundary Optimization:** Short-circuits instantly at 0% or 100% to eliminate UI flicker and redundant system events.
@@ -28,17 +38,17 @@ The script features a fully automated installation process. To unlock **UIAccess
 
 ### Automated Installation
 
-1. Download the `mouse-forward-backward-volume-control.ahk` file from this repository.
-2. Open **PowerShell** or **Command Prompt** (standard user context is fine) in the folder where you downloaded the file.
+1. Download the `volume-control.ahk` file from this repository.
+2. Open **PowerShell** or **Command Prompt** in the folder where you downloaded the file.
 3. Run the script with the `/install` flag:
 
-	mouse-forward-backward-volume-control.ahk /install
+	volume-control.ahk /install
 
 4. Windows will prompt a standard UAC dialog to grant temporary administrative privileges for the deployment. 
 5. A success dialog will appear. The script is now deployed to `Program Files`, integrated into your Windows Startup, and is already running silently in the background.
 
 ### Under the Hood
-- **Safe Deployment:** Creates a protected folder under `%ProgramFiles%\AutoHotkey\mouse-forward-backward-volume-control-ahk` and moves the execution file there.
+- **Safe Deployment:** Creates a protected folder under `%ProgramFiles%\AutoHotkey\mouse-side-buttons-volume-control` and moves the execution file there as `volume-control.ahk`.
 - **Startup Integration:** Configures a dedicated startup shortcut targeting the native `AutoHotkey64_UIA.exe` binary, passing our script as an immutable argument. This triggers the secure UIAccess automation context on boot.
 
 ---
@@ -64,7 +74,7 @@ The utility provides an automated cleanup cycle that handles process termination
 1. Open **PowerShell** or **Command Prompt**.
 2. Run the script with the `/uninstall` flag:
 
-	mouse-forward-backward-volume-control.ahk /uninstall
+	volume-control.ahk /uninstall
 
 3. Accept the UAC elevation prompt. The script will safely terminate the active background instance, wipe the startup shortcut file from `shell:startup`, and cleanly delete the installation path from `Program Files`.
 
@@ -72,10 +82,11 @@ The utility provides an automated cleanup cycle that handles process termination
 If you no longer have access to the initial download file to pass the flag, you can remove the script manually by following these steps:
 
 1. Open **Task Manager** (`Ctrl + Shift + Esc`) and terminate any active **AutoHotkey Unicode Application** process.
-2. Press `Win + R`, type `shell:startup`, and press Enter. Delete the `mouse-forward-backward-volume-control.lnk` shortcut file.
+2. Press `Win + R`, type `shell:startup`, and press Enter. Delete the `mouse-side-buttons-volume-control.lnk` shortcut file.
 3. Open an elevated/Admin Command Prompt or PowerShell window and run the following command to clean up the deployment directory:
    ```cmd
-   rmdir /s /q "C:\Program Files\AutoHotkey\mouse-forward-backward-volume-control-ahk"
+   rmdir /s /q "C:\Program Files\AutoHotkey\mouse-side-buttons-volume-control"
+
 ---
 
 ## License
