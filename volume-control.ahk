@@ -8,9 +8,9 @@ if (A_Args.Length > 0) {
     action := A_Args[1]
     
     ; Define persistent paths used by both install and uninstall routines
-    installDir := A_ProgramFiles "\AutoHotkey\mouse-forward-backward-volume-control-ahk"
-    secureScriptPath := installDir "\mouse-forward-backward-volume-control.ahk"
-    shortcutPath := A_Startup "\mouse-forward-backward-volume-control.lnk"
+    installDir := A_ProgramFiles "\AutoHotkey\mouse-side-buttons-volume-control"
+    secureScriptPath := installDir "\volume-control.ahk"
+    shortcutPath := A_Startup "\mouse-side-buttons-volume-control.lnk"
 
     ; --- UNINSTALL LOGIC ---
     if (action = "/uninstall") {
