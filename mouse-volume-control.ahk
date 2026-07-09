@@ -1,6 +1,7 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 #UseHook
+#NoTrayIcon
 
 global VOLUME_STEP      := 10     ; Volume step in percentage per increase/decrease operation
 global REPEAT_DELAY_MS  := 100    ; Delay in milliseconds between steps when holding down the button
