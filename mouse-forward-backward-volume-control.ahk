@@ -4,38 +4,85 @@
 #NoTrayIcon
 
 ; --- AUTOMATIC DEPLOYMENT & INSTALLATION LOGIC ---
-if (A_Args.Length > 0 && A_Args[1] = "/install") {
-    ; Define secure installation destination in user's local AppData
-    installDir := A_AppData "\mouse-forward-backward-volume-control-ahk"
+if (A_Args.Length > 0) {
+    action := A_Args[1]
+    
+    ; Define persistent paths used by both install and uninstall routines
+    installDir := A_ProgramFiles "\AutoHotkey\mouse-forward-backward-volume-control-ahk"
     secureScriptPath := installDir "\mouse-forward-backward-volume-control.ahk"
-    
-    ; Define Windows startup shortcut path
-    startupFolder := A_Startup
-    shortcutPath := startupFolder "\mouse-forward-backward-volume-control.lnk"
-    
-    ; Locate the system's native AutoHotkey UIA executable
-    ahkUiaExe := A_ProgramFiles "\AutoHotkey\v2\AutoHotkey64_UIA.exe"
-    if (!FileExist(ahkUiaExe)) {
-        ahkUiaExe := A_ProgramFiles "\AutoHotkey\v2\AutoHotkey32_UIA.exe"
-    }
-    
-    try {
-        ; 1. Ensure the destination directory exists safely
-        if (!DirExist(installDir)) {
-            DirCreate(installDir)
+    shortcutPath := A_Startup "\mouse-forward-backward-volume-control.lnk"
+
+    ; --- UNINSTALL LOGIC ---
+    if (action = "/uninstall") {
+        ; Elevate to Admin privileges temporarily to remove files from Program Files
+        if (!A_IsAdmin) {
+            try {
+                Run('*RunAs "' A_ScriptFullPath '" /uninstall')
+                ExitApp()
+            } catch {
+                MsgBox("Uninstallation requires Administrative privileges to remove files from Program Files.", "Access Denied", 16)
+                ExitApp()
+            }
         }
-        
-        ; 2. Copy the executing script file to the secure AppData location (overwrite if existing)
-        FileCopy(A_ScriptFullPath, secureScriptPath, 1)
-        
-        ; 3. Create the startup shortcut targeting the secure location wrapped in UIA execution context
-        FileCreateShortcut(ahkUiaExe, shortcutPath, installDir, '"' secureScriptPath '"')
-        
-        MsgBox("Installation successful!`n`nThe script has been copied to a secure system location and will now run automatically at Windows startup.", "Success", 64)
-    } catch Error as err {
-        MsgBox("Installation failed: " err.Message, "Error", 16)
+
+        try {
+            ; 1. Remove the startup shortcut if it exists
+            if (FileExist(shortcutPath)) {
+                FileDelete(shortcutPath)
+            }
+
+            ; 2. Force-close any running background instances of this specific script
+            DetectHiddenWindows(true)
+            if (WinExist(secureScriptPath " ahk_class AutoHotkey")) {
+                WinClose(secureScriptPath " ahk_class AutoHotkey")
+            }
+
+            ; 3. Clean up the installation directory from Program Files
+            if (DirExist(installDir)) {
+                DirDelete(installDir, 1) ; 1 forces deletion of files inside
+            }
+
+            MsgBox("Uninstallation successful!`n`nThe script and its startup triggers have been completely removed from your system.", "Success", 64)
+        } catch Error as err {
+            MsgBox("Uninstallation failed: " err.Message, "Error", 16)
+        }
+        ExitApp()
     }
-    ExitApp()
+
+    ; --- INSTALL LOGIC ---
+    if (action = "/install") {
+        if (!A_IsAdmin) {
+            try {
+                Run('*RunAs "' A_ScriptFullPath '" /install')
+                ExitApp()
+            } catch {
+                MsgBox("Installation requires Administrative privileges to deploy into Program Files for UIAccess support.", "Access Denied", 16)
+                ExitApp()
+            }
+        }
+
+        ahkUiaExe := A_ProgramFiles "\AutoHotkey\v2\AutoHotkey64_UIA.exe"
+        if (!FileExist(ahkUiaExe)) {
+            ahkUiaExe := A_ProgramFiles "\AutoHotkey\v2\AutoHotkey32_UIA.exe"
+        }
+
+        try {
+            if (!DirExist(installDir)) {
+                DirCreate(installDir)
+            }
+
+            FileCopy(A_ScriptFullPath, secureScriptPath, 1)
+            FileCreateShortcut(ahkUiaExe, shortcutPath, installDir, '"' secureScriptPath '"')
+            
+            ; Start the script immediately for the active user session using the shortcut
+            Run('cmd.exe /c start "" "' shortcutPath '"',, "Hide")
+
+            MsgBox("Installation successful!`n`nThe script has been deployed to Program Files with native UIAccess support and is now running in the background.", "Success", 64)
+        } catch Error as err {
+            MsgBox("Installation failed: " err.Message, "Error", 16)
+        }
+        ExitApp()
+    }
 }
 
 ; --- GLOBAL CONFIGURATION ---
@@ -53,21 +100,15 @@ XButton2::VolumeRepeatLoop(VOLUME_STEP, "XButton2")  ; Forward side button
  * Implements a thread gate to guarantee clean termination exactly at a step boundary.
  */
 VolumeRepeatLoop(delta, keyName) {
-    ; Short-circuit: Exit immediately if already at the absolute hardware boundaries
     currentVolume := Round(SoundGetVolume())
     if ((delta > 0 && currentVolume >= 100) || (delta < 0 && currentVolume <= 0)) {
         return
     }
 
-    ; Execute first step immediately
     AdjustVolume(delta)
     
-    ; Initial debounce delay before auto-repeat kicks in
     if (!KeyWait(keyName, "T0.4")) {
-        
-        ; Loop as long as button is held down
         while (GetKeyState(keyName, "P")) {
-            ; Check boundary inside the loop to break early during auto-repeat
             currentVolume := Round(SoundGetVolume())
             if ((delta > 0 && currentVolume >= 100) || (delta < 0 && currentVolume <= 0)) {
                 break
@@ -77,14 +118,10 @@ VolumeRepeatLoop(delta, keyName) {
             Sleep(REPEAT_DELAY_MS)
         }
         
-        ; --- ATOMIC THREAD GATE: ANTI-RACE CONDITION SNAP ---
-        ; Forces the volume to snap strictly to the nearest configuration milestone
-        ; the exact millisecond the user releases the hardware button.
         currentVolume := Round(SoundGetVolume())
         snappedVolume := Round(currentVolume / VOLUME_STEP) * VOLUME_STEP
         snappedVolume := Min(100, Max(0, snappedVolume))
         
-        ; Snap directly to the clean step without sending additional media keys
         SoundSetVolume(snappedVolume)
     }
 }
@@ -119,7 +156,6 @@ CalculateTarget(current, delta) {
 ; --- WINDOWS INTERACTION HELPER ---
 
 ApplyVolumeChange(target, delta) {
-    ; Windows native volume change per media key press (Hardcoded by OS)
     static WINDOWS_OSD_STEP := 2 
     
     isIncreasing := (delta > 0)
